@@ -1,31 +1,5 @@
 var nunjucks = require('nunjucks');
-// var rp = require('request-promise-native');
 const axios = require('axios');
-var env;
-
-const instance = axios.create({
-  baseURL: 'https://raw.githubusercontent.com/trra/dw-templates/master/',
-  timeout: 1000,
-  headers: { 'content-type': 'application/octet-stream', pragma: 'no-cache', 'cache-control': 'no-cache' }
-});
-
-// Define custom async loader
-var UrlLoader = nunjucks.Loader.extend({
-  async: false,
-  getSource: function(path, cb) {
-    instance
-      .get(path)
-      // fetch('https://raw.githubusercontent.com/trra/dw-templates/master/' + path)
-      // rp({
-      //   method: 'GET',
-      //   uri: 'https://raw.githubusercontent.com/trra/dw-templates/master/' + path,
-      //   headers: { 'content-type': 'application/octet-stream' }
-      // })
-      // .then(res => res.text())
-      .then(src => cb(null, { src, path, noCache: false }))
-      .catch(cb);
-  }
-});
 
 // Define custom tag "get" to load remote data by url to var
 // Example:
@@ -65,10 +39,10 @@ function GetExtension(cb) {
   };
 }
 
-// Define custom tag "get" to load remote data by url to var
+// Define custom tag "require" to load Node package data by name
 // Example:
-// {% get book = '/api/books/10' %}
-// {{ book.id }} {{ book.name }}
+// {% require code = "@codevault/sql-poc/install.sql" %}
+// {{ code | fetch ({schemaName: source.schemaName, tableName: source.tableName}) | safe }}
 function ImportExtension(cb) {
   this.tags = ['require'];
 
@@ -84,32 +58,41 @@ function ImportExtension(cb) {
     let ref = args instanceof Object && Object.keys(args).filter(e => e != '__keywords')[0];
     var url = args[ref];
 
-    var tmpl = context.env.getTemplate(url);
-    const res = tmpl.tmplStr;
-    context.ctx[ref] = res.error ? undefined : res;
+    var template = context.env.getTemplate(url);
+    const res = template.tmplStr;
+    context.ctx[ref] = template.error ? undefined : res;
     cb && cb();
-
-    // instance
-    //   .get(url)
-    //   // .then(res => res.json())
-    //   .then(function(res) {
-    //     if (res.error) console.error(url, res.error);
-
-    //     context.ctx[ref] = res.error ? undefined : res;
-    //     cb && cb();
-    //   })
-    //   .catch(cb);
   };
 }
 
 // Define environment with custom loader
-const init = (inputDir, nunjucksOptions) => {
-  env = new nunjucks.Environment(
+const init = (inputDir, gitRepo, nunjucksOptions) => {
+  // var env = new nunjucks.Environment(new UrlLoader(), { autoescape: true });
+
+  const instance = axios.create({
+    baseURL: `https://raw.githubusercontent.com/${gitRepo}/master/`,
+    timeout: 1000,
+    headers: { 'content-type': 'application/octet-stream', pragma: 'no-cache', 'cache-control': 'no-cache' }
+  });
+
+  // Define custom async loader
+  var UrlLoader = nunjucks.Loader.extend({
+    async: false,
+    getSource: function(path, cb) {
+      instance
+        .get(path)
+        .then(src => cb(null, { src, path, noCache: false }))
+        .catch(cb);
+    }
+  });
+
+  var env = new nunjucks.Environment(
     [new nunjucks.FileSystemLoader(inputDir), new nunjucks.NodeResolveLoader()],
     nunjucksOptions
   );
   env.addExtension('GetExtension', new GetExtension());
   env.addExtension('ImportExtension', new ImportExtension());
+
   // Example of async filter (similar to `include`-tag)
   // Usage: {{ 'template-name.njk' | render({a: 10, text: 'OK'}) }}
   env.addFilter(
@@ -120,11 +103,12 @@ const init = (inputDir, nunjucksOptions) => {
     true
   );
 
-  // Example of sync filter
+  // Usage: {{ datetimeValue | time }}
   env.addFilter('time', function(datetime) {
     return new Date(+datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   });
 
+  // Usage: {{ code | fetch ({schemaName: source.schemaName, tableName: source.tableName}) | safe }}
   env.addFilter('fetch', function(text, context) {
     return env.renderString(text, context);
   });
@@ -132,8 +116,4 @@ const init = (inputDir, nunjucksOptions) => {
   return env;
 };
 
-// var env = new nunjucks.Environment([new nunjucks.FileSystemLoader(inputDir), new nunjucks.NodeResolveLoader()], nunjucksOptions);
-// var env = new nunjucks.Environment(new UrlLoader(), { autoescape: true });
-
 exports.init = init;
-// exports.config = config;

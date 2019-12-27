@@ -27,6 +27,14 @@ const { argv } = require('yargs')
     nargs: 1,
     describe: 'Path where templates live'
   })
+  .option('repository', {
+    alias: 'r',
+    string: true,
+    requiresArg: false,
+    nargs: 1,
+    default: 'trra/dw-templates',
+    describe: 'Git repository with templates'
+  })
   .option('out', {
     alias: 'o',
     string: true,
@@ -55,6 +63,7 @@ const { argv } = require('yargs')
   });
 
 const inputDir = resolve(process.cwd(), argv.path) || '';
+const gitRepo = resolve(process.cwd(), argv.repository) || '';
 const outputDir = argv.out || '';
 
 const context = argv._[1] ? JSON.parse(readFileSync(argv._[1], 'utf8')) : {};
@@ -66,16 +75,13 @@ const nunjucksOptions = argv.options
   ? JSON.parse(readFileSync(argv.options, 'utf8'))
   : { trimBlocks: true, lstripBlocks: true, noCache: true, autoescape: true };
 
-const env = nunjucksEnv.init(inputDir, nunjucksOptions);
+const env = nunjucksEnv.init(inputDir, gitRepo, nunjucksOptions);
 
 const render = (/** @type {string[]} */ files) => {
   for (const file of files) {
     console.log(chalk.blue('Rendering: ' + file));
 
     try {
-      // var tmpl = nunjucksEnv.env.getTemplate('@codevault/sql-poc/install.sql');
-      // const res = tmpl.render(context);
-      // console.log(chalk.blue('Output: ' + res));
       const res = env.render(file, context);
       let outputFile = file.replace(/\.\w+$/, `.${argv.extension}`);
 
