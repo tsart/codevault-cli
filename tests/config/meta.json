@@ -1,0 +1,7 @@
+{
+  "schema": "dw",
+  "source": {
+    "schemaName": "srcSchema",
+    "tableName": "srcTable"
+  }
+}
