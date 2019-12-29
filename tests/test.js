@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'development';
 
 const srcPath = `tests`;
 const outPath = `tests/out`;
-const context = `tests/config/custom.settings.json`;
+const context = `tests/custom.context.json`;
 const globalMask = `*.tpl`;
 const extension = `sql`;
 const cmd = `node index.js ${globalMask} ${context} -p ${srcPath} -o ${outPath} -e ${extension}`;
@@ -21,11 +21,12 @@ for (const file of filesCompiled) {
   ok(content.startsWith('-- Demo template'), 'Layout not extended');
 
   if (file === 'demo.sql') {
-    ok(content.includes('[srcSchema].[srcTable]'), 'Metadata not interpolated');
+    ok(content.includes('[srcSchema]'), 'Metadata not interpolated');
+    ok(content.includes('[srcTable]'), 'Metadata not interpolated');
     ok(content.includes('development'), 'Env variable not passed');
   }
 
-  // unlinkSync(`${outPath}/${file}`);
+  unlinkSync(`${outPath}/${file}`);
 }
 
-// rmdirSync(outPath);
+rmdirSync(outPath);

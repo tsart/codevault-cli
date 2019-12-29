@@ -17,8 +17,9 @@
 	},
 	"engineStrict": true,
 	"scripts": {
-		"custom": "node index.js *.tpl tests/config/custom.settings.json -p tests -o tests/out",
+		"custom": "node index.js *.tpl tests/custom.settings.json -p tests -o tests/out",
 		"dev": "node index.js *.tpl -p tests -o tests/out",
+		"debug": "node --inspect --inspect-brk index.js *.tpl -p tests -o tests/out",
 		"test": "node tests/test.js"
 	},
 	"dependencies": {

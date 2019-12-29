@@ -5,10 +5,19 @@ var _ = require('lodash');
 const getConfig = require('../helpers/package').getConfig;
 let meta = {};
 
-// Define custom tag "require" to load Node package data by name
-// Example:
-// {% require code = "@codevault/sql-poc/install.sql" %}
-// {{ code | fetch ({schemaName: source.schemaName, tableName: source.tableName}) | safe }}
+/**
+ * Define custom tag "require" to load Node package data by name
+ * @param {string} package NPM package name
+ * @param {string} objectName (optional) object to load from NPM package
+ * @param {string} contentType (optional) output format (if available)
+ * @returns {string}
+ */
+// Example 1:
+// {# get all objects from NPM package in default format #}
+// {% require package = "@codevault/sql-poc" %}
+// Example 2:
+// {# get [info] object from NPM package in markdown format #}
+// {% require package = "@codevault/sql-poc", objectName = "info", contentType = "md" %}
 function ImportExtension(cb) {
   this.tags = ['require'];
 
@@ -25,8 +34,6 @@ function ImportExtension(cb) {
     var packageName = args[refPackageName];
 
     let config = getConfig(context.env, packageName, args.objectName, args.contentType || 'sql');
-    // console.log('context.ctx', context.ctx);
-    // console.log('config.settings', config.settings);
 
     // add package settings as namespace object key (overwrite with user settings if any)
     meta[config.namespace] = _.merge(config.settings, meta[config.namespace]);
@@ -35,7 +42,6 @@ function ImportExtension(cb) {
     context.ctx[refPackageName] = template.error ? undefined : template.tmplStr;
 
     meta = _.merge(meta, context.ctx);
-    // console.log('meta', meta);
     cb && cb();
   };
 }
@@ -53,8 +59,11 @@ const init = (inputDir, gitRepo, nunjucksOptions) => {
     return new Date(+datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   });
 
-  // Usage: {{ code | fetch ({schemaName: source.schemaName, tableName: source.tableName}) | safe }}
-  env.addFilter('fetch', function(text, context) {
+  // Example 1: Render [code] value
+  // {{ code | renderString | safe }}
+  // Example 2: Render [code] value with defined context
+  // {{ code | renderString ({schemaName: source.schemaName, tableName: source.tableName}) | safe }}
+  env.addFilter('renderString', function(text, context) {
     return env.renderString(text, _.merge(meta, context));
   });
 

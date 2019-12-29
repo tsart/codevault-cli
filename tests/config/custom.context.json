@@ -1,9 +1,0 @@
-{
-  "logging": {
-    "schemaName": "logger"
-  },
-  "source": {
-    "schemaName": "srcSchema",
-    "tableName": "srcTable"
-  }
-}

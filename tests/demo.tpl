@@ -1,21 +1,22 @@
--- Demo template
-{# 
+-- Demo template 
 
--- simple rendering
-[{{ source.schemaName }}].[{{ source.tableName }}]
+-- read environment attribute
+-- [{{ env.NODE_ENV }}]
 
--- rendering with filter
-{{ 1424197820 | time }}
+-- simple rendering with user defined context
+source.schemaName: [{{ source.schemaName }}]
+source.tableName: [{{ source.tableName }}]
+logging.schemaName: [{{logging.schemaName}}]
+logging.logLevel: [{{ logging.logLevel }}]
 
--- test system environment parameter
+-- read template from NPM package 
+-- use default package context merged with user context in package namespace `logging`
+-- Render the package content with custom context
+-- :: START
+{% require package = "@codevault/sql-poc" -%}
+{{ package | renderString | safe }}
+-- :: FINISH 
 
-{% include "_layout.tpl" %} -#}
--- read template from NPM package and render it
-{% require code = "@codevault/sql-poc" -%}
-{# {% require code = "@codevault/sql-poc", contentType = "md" %} -#}
-{# {% require code = "@codevault/sql-poc", objectName = 'info' %} -#}
-{{ code | fetch | safe }}
-
-{{ env.CODEVAULT_ENV }}
-{# EXEC [{{logging.schemaName}}].info 'Test message' -#}
-
+-- package context is not available from outside
+logging.schemaName: [{{logging.schemaName}}]
+logging.logLevel: [{{ logging.logLevel }}]

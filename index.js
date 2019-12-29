@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-const { readFileSync, writeFileSync } = require('fs');
+const { readFileSync, writeFileSync, existsSync } = require('fs');
 const { resolve, basename, dirname } = require('path');
 const nunjucks = require('nunjucks');
 const chokidar = require('chokidar');
@@ -28,6 +28,7 @@ const { argv } = require('yargs')
     string: true,
     requiresArg: true,
     nargs: 1,
+    default: '.',
     describe: 'Path where templates live'
   })
   .option('out', {
@@ -35,6 +36,7 @@ const { argv } = require('yargs')
     string: true,
     requiresArg: true,
     nargs: 1,
+    default: 'out',
     describe: 'Output folder'
   })
   .option('watch', {
@@ -63,7 +65,7 @@ const outputDir = argv.out || '';
 let contextFile =
   argv._[1] || (projectEnv === 'dev' && 'local.context.json') || (projectEnv === 'prod' && 'context.json');
 console.log(chalk.blue(`Environment: [${projectEnv}] ${contextFile || chalk.red.bold('context file not defined')}`));
-context = JSON.parse(readFileSync(contextFile, 'utf8'));
+context = existsSync(contextFile) ? JSON.parse(readFileSync(contextFile, 'utf8')) : {};
 
 // Expose environment variables to render context
 context.env = process.env;
