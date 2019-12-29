@@ -20,10 +20,10 @@ _For convenience, `process.env` object is added to the context as `env`._
 #### Basic examples
 
 ```bash
-codevault foo.tpl meta.json
+codevault foo.tpl context.json
 ```
 
-Compiles `foo.tpl` to `foo.sql` with metadata from `meta.json` (and variables from `process.env` as `env`).
+Compiles `foo.tpl` to `foo.sql` with context data from `context.json` (and variables from `process.env` as `env`).
 
 ```bash
 codevault **/*.tpl
@@ -61,7 +61,7 @@ Extension for rendered files. Defaults to `sql`.
 
 `-O <file>`
 
-Takes a json file as codevault options. Defaults are :
+Takes a json file as codevault render options. Defaults are:
 
 ```json
 trimBlocks: true,
@@ -73,13 +73,25 @@ autoescape: true
 #### Advanced examples
 
 ```bash
-codevault foo.tpl -p src -o out -O meta.json
+codevault foo.tpl -p src -o out -O render.json
 ```
 
-Compiles `src/foo.tpl` to `out/foo.sql`, with `meta.json` as codevault environnement options.
+Compiles `src/foo.tpl` to `out/foo.sql`, with `render.json` as codevault render options.
 
 ```bash
-codevault *.tpl meta.json -w -p src
+codevault *.tpl context.json -w -p src
 ```
 
-Compiles all `.tpl` files (except ones starting with `_`) in the `src` folder to the current working directory, with `meta.json` as metadata, and keeps running in the background for files changes.
+Compiles all `.tpl` files (except ones starting with `_`) in the `src` folder to the current working directory, with `context.json` as context, and keeps running in the background for files changes.
+
+## Configuration
+
+### Environment settings
+
+You can create `.env` file in the project root folder to define project specific environment settings.
+
+### Default context file
+
+If context file is not specified in command line then use the following:
+
+If `NODE_ENV` environment attribute is set to `production` then take `context.json` file in the project root folder. Otherwise take `local.context.json` file.

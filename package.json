@@ -7,7 +7,7 @@
 	"license": "MIT",
 	"main": "index.js",
 	"bin": {
-		"nunjucks": "./index.js"
+		"codevault": "./index.js"
 	},
 	"files": [
 		"index.js"
@@ -17,14 +17,17 @@
 	},
 	"engineStrict": true,
 	"scripts": {
+		"custom": "node index.js *.tpl tests/config/custom.settings.json -p tests -o tests/out",
+		"dev": "node index.js *.tpl -p tests -o tests/out",
 		"test": "node tests/test.js"
 	},
 	"dependencies": {
 		"@codevault/sql-poc": "0.0.2",
-		"axios": "^0.19.0",
 		"chalk": "^2.4.2",
 		"chokidar": "^3.0.1",
+		"dotenv": "^8.2.0",
 		"glob": "^7.0.3",
+		"lodash": "^4.17.15",
 		"mkdirp": "^0.5.1",
 		"nunjucks": "^3.2.0",
 		"yargs": "^13.2.4"

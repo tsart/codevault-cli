@@ -7,13 +7,16 @@ const chokidar = require('chokidar');
 const glob = require('glob');
 const mkdirp = require('mkdirp');
 const chalk = require('chalk').default;
+require('dotenv').config();
 
-const nunjucksEnv = require('./helpers/engine');
+const projectEnv = 'production' === process.env.NODE_ENV ? 'prod' : 'dev';
+
+const engineEnv = require('./helpers/engine');
 
 const { argv } = require('yargs')
   .usage('Usage: codevault <file|glob> [context] [options]')
-  .example('codevault foo.tpl data.json', 'Compile foo.tpl to foo.sql')
-  .example('codevault *.tpl -w -p src -o dist', 'Watch .tpl files in ./src, compile them to ./dist')
+  .example('codevault foo.tpl', 'Compile foo.tpl using default context file')
+  .example('codevault *.tpl -w -p src -o out', 'Watch .tpl files in ./src, compile them to ./out')
   .demandCommand(1, 'You must provide at least a file/glob path')
   .epilogue('For more information on template engine: https://mozilla.github.io/nunjucks/')
   .help()
@@ -26,14 +29,6 @@ const { argv } = require('yargs')
     requiresArg: true,
     nargs: 1,
     describe: 'Path where templates live'
-  })
-  .option('repository', {
-    alias: 'r',
-    string: true,
-    requiresArg: false,
-    nargs: 1,
-    default: 'trra/dw-templates',
-    describe: 'Git repository with templates'
   })
   .option('out', {
     alias: 'o',
@@ -63,10 +58,13 @@ const { argv } = require('yargs')
   });
 
 const inputDir = resolve(process.cwd(), argv.path) || '';
-const gitRepo = resolve(process.cwd(), argv.repository) || '';
 const outputDir = argv.out || '';
 
-const context = argv._[1] ? JSON.parse(readFileSync(argv._[1], 'utf8')) : {};
+let contextFile =
+  argv._[1] || (projectEnv === 'dev' && 'local.context.json') || (projectEnv === 'prod' && 'context.json');
+console.log(chalk.blue(`Environment: [${projectEnv}] ${contextFile || chalk.red.bold('context file not defined')}`));
+context = JSON.parse(readFileSync(contextFile, 'utf8'));
+
 // Expose environment variables to render context
 context.env = process.env;
 
@@ -75,15 +73,18 @@ const nunjucksOptions = argv.options
   ? JSON.parse(readFileSync(argv.options, 'utf8'))
   : { trimBlocks: true, lstripBlocks: true, noCache: true, autoescape: true };
 
-const env = nunjucksEnv.init(inputDir, gitRepo, nunjucksOptions);
+const codeVaultEnv = engineEnv.init(inputDir, nunjucksOptions);
 
 const render = (/** @type {string[]} */ files) => {
+  console.time('Execution time');
+  console.group('Rendering');
   for (const file of files) {
-    console.log(chalk.blue('Rendering: ' + file));
+    console.log(chalk.blue('File: ' + file));
 
     try {
-      const res = env.render(file, context);
+      const res = codeVaultEnv.render(file, context);
       let outputFile = file.replace(/\.\w+$/, `.${argv.extension}`);
+      console.log(chalk.white('Output: ' + outputFile));
 
       if (outputDir) {
         outputFile = resolve(outputDir, outputFile);
@@ -95,6 +96,8 @@ const render = (/** @type {string[]} */ files) => {
       console.log(chalk.red(err.message));
     }
   }
+  console.groupEnd();
+  console.timeEnd('Execution time');
 };
 
 /** @type {glob.IOptions} */
@@ -125,7 +128,7 @@ if (argv.watch) {
 
   // if the file is a layout/partial, render all other files instead
   watcher.on('change', file => {
-    if (layouts.indexOf(file) > -1) render(templates);
-    else render([file]);
+    if (layouts.indexOf(file) > -1) render(templates, context);
+    else render([file], context);
   });
 }

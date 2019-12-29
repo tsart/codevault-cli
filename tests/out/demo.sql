@@ -1,16 +1,12 @@
 -- Demo template
-
--- simple rendering
-[srcSchema].[srcTable]
-
--- rendering with filter
-11:36 PM
-
 -- read template from NPM package and render it
-PRINT 'Executing the module ... new'
-CREATE TABLE [srcSchema].[srcTable] AS 
-...
+PRINT 'Executing the module ...'
+CREATE TABLE [logger].[info] AS 
+GO
+
+PRINT 'Function info()'
+CREATE FUNCTION [logger].[info] AS ...
+GO
 
 
--- test system environment parameter
-development
+

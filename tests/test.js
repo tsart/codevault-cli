@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'development';
 
 const srcPath = `tests`;
 const outPath = `tests/out`;
-const context = `tests/config/meta.json`;
+const context = `tests/config/custom.settings.json`;
 const globalMask = `*.tpl`;
 const extension = `sql`;
 const cmd = `node index.js ${globalMask} ${context} -p ${srcPath} -o ${outPath} -e ${extension}`;
