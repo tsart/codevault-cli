@@ -1,0 +1,26 @@
+{
+  "records": {
+    "type": "Table",
+    "tableName": "records",
+    "createParameters": "WITH ( DISTRIBUTION = ROUND_ROBIN, HEAP )",
+    "columnsPK": [
+      "id"
+    ],
+    "columns": [
+      {
+        "name": "logLevel",
+        "dataType": "varchar",
+        "characterMaximumLength": 10,
+        "isNullable": false,
+        "ordinalPosition": 1
+      },
+      {
+        "name": "message",
+        "dataType": "varchar",
+        "characterMaximumLength": -1,
+        "isNullable": true,
+        "ordinalPosition": 2
+      }
+    ]
+  }
+}

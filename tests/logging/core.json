@@ -1,0 +1,105 @@
+{
+  "objectType": {
+    "logging": [
+      "id",
+      "sessionNo",
+      "packageName",
+      "objectCode",
+      "createDate",
+      "createBy"
+    ],
+    "dimension": [
+      "sessionNo",
+      "packageName",
+      "startDate",
+      "finishDate",
+      "version",
+      "hash"
+    ]
+  },
+  "internalColumns": [
+    {
+      "code": "id",
+      "name": "id",
+      "dataType": "bigint",
+      "autoIncrement": true,
+      "isNullable": false,
+      "ordinalPosition": -1
+    },
+    {
+      "code": "sessionNo",
+      "name": "dwSessionNo",
+      "dataType": "varchar",
+      "characterMaximumLength": 40,
+      "isNullable": false,
+      "ordinalPosition": 10101
+    },
+    {
+      "code": "packageName",
+      "name": "dwPackageName",
+      "dataType": "varchar",
+      "characterMaximumLength": 40,
+      "isNullable": false,
+      "ordinalPosition": 10102
+    },
+    {
+      "code": "objectCode",
+      "name": "dwObjectCode",
+      "dataType": "varchar",
+      "characterMaximumLength": 250,
+      "isNullable": false,
+      "ordinalPosition": 10110
+    },
+    {
+      "code": "createDate",
+      "name": "dwCreateDate",
+      "dataType": "datetime",
+      "isNullable": false,
+      "ordinalPosition": 10851
+    },
+    {
+      "code": "updateDate",
+      "name": "dwUpdateDate",
+      "dataType": "datetime",
+      "isNullable": false,
+      "ordinalPosition": 10852
+    },
+    {
+      "code": "startDate",
+      "name": "dwStartDate",
+      "dataType": "datetime",
+      "isNullable": false,
+      "ordinalPosition": 10801
+    },
+    {
+      "code": "finishDate",
+      "name": "dwFinishDate",
+      "dataType": "datetime",
+      "isNullable": false,
+      "ordinalPosition": 10802
+    },
+    {
+      "code": "version",
+      "name": "dwVersion",
+      "dataType": "int",
+      "isNullable": false,
+      "ordinalPosition": 10501
+    },
+    {
+      "code": "hash",
+      "name": "dwHash",
+      "dataType": "varchar",
+      "characterMaximumLength": 40,
+      "isNullable": false,
+      "ordinalPosition": 10900
+    },
+    {
+      "code": "createBy",
+      "name": "dwCreateBy",
+      "dataType": "varchar",
+      "characterMaximumLength": 250,
+      "isNullable": false,
+      "ordinalPosition": 10500
+    }
+  ]
+}

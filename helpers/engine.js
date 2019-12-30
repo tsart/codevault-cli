@@ -3,6 +3,7 @@ const { readFileSync, readdirSync, unlinkSync, rmdirSync } = require('fs');
 var _ = require('lodash');
 
 const getConfig = require('../helpers/package').getConfig;
+const getMeta = require('../helpers/project').getMeta;
 let meta = {};
 
 /**
@@ -46,6 +47,35 @@ function ImportExtension(cb) {
   };
 }
 
+function MetaExtension(cb) {
+  this.tags = ['meta'];
+
+  this.parse = function(parser, nodes, lexer) {
+    var tok = parser.nextToken();
+    var args = parser.parseSignature(null, true);
+    parser.advanceAfterBlockEnd(tok.value);
+
+    return new nodes.CallExtensionAsync(this, 'run', args, cb);
+  };
+
+  this.run = function(context, args, cb) {
+    let refMetaFileName = args instanceof Object && Object.keys(args).filter(e => e != '__keywords')[0];
+    var metaFileName = args[refMetaFileName];
+
+    let config = getMeta(context.env, metaFileName, args.objectName, args.contentType || 'sql');
+    console.log('meta', JSON.stringify(config).substr(0, 100), '...');
+
+    // add package settings as namespace object key (overwrite with user settings if any)
+    meta[config.namespace] = _.merge(config.settings, meta[config.namespace]);
+
+    var template = context.env.getTemplate(metaFileName);
+    context.ctx[refMetaFileName] = template.error ? undefined : JSON.parse(template.tmplStr);
+
+    meta = _.merge(meta, context.ctx);
+    cb && cb();
+  };
+}
+
 // Define environment with custom loader
 const init = (inputDir, gitRepo, nunjucksOptions) => {
   var env = new nunjucks.Environment(
@@ -53,6 +83,7 @@ const init = (inputDir, gitRepo, nunjucksOptions) => {
     nunjucksOptions
   );
   env.addExtension('ImportExtension', new ImportExtension());
+  env.addExtension('MetaExtension', new MetaExtension());
 
   // Usage: {{ datetimeValue | time }}
   env.addFilter('time', function(datetime) {
@@ -69,12 +100,39 @@ const init = (inputDir, gitRepo, nunjucksOptions) => {
 
   // Example of async filter (similar to `include`-tag)
   // Usage: {{ 'template-name.njk' | render({a: 10, text: 'OK'}) }}
-  env.addFilter('render', function(template, ctx, cb) {
-    // env.render(template, ctx);
-    env.render(template, ctx, (err, result) => {
-      // cb && cb(err, !err ? result : undefined);
-      cb && cb(err, !err ? env.filters.safe(html) : undefined);
-    });
+  // env.addFilter('render', function(template, ctx, cb) {
+  //   // env.render(template, ctx);
+  //   env.render(template, ctx, (err, result) => {
+  //     // cb && cb(err, !err ? result : undefined);
+  //     cb && cb(err, !err ? env.filters.safe(html) : undefined);
+  //   });
+  // });
+
+  // {{ 'test2.html' | render({b: 200}) }}
+  env.addFilter('render', function(template, ctx) {
+    try {
+      return env.filters.safe(env.render(template, ctx));
+    } catch (err) {
+      return err.message;
+    }
+  });
+
+  env.addFilter('pickBy', function(object, filter) {
+    if (filter instanceof Array) {
+      return object.filter(item => {
+        return filter.includes(item.code);
+      });
+    }
+    // console.log('typeof filter', typeof filter);
+    else
+      return _.pickBy(object, function(value, key) {
+        return _.startsWith(key, filter);
+      });
+  });
+
+  env.addFilter('merge', function(object1, object2) {
+    return [...object1, ...object2];
+    // return _.merge(object1, object2);
   });
 
   return env;

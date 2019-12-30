@@ -1,10 +1,14 @@
 {
-	"name": "codevault-cli",
+	"name": "@codevault/codevault-cli",
 	"version": "0.0.1",
 	"description": "CodeVault CLI",
 	"author": "Otrera",
 	"repository": "github:tsart/codevault-cli",
 	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/tsart/codevault-cli/issues"
+	},
+	"homepage": "https://github.com/tsart/codevault-cli#readme",
 	"main": "index.js",
 	"bin": {
 		"codevault": "./index.js"

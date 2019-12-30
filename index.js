@@ -66,6 +66,7 @@ let contextFile =
   argv._[1] || (projectEnv === 'dev' && 'local.context.json') || (projectEnv === 'prod' && 'context.json');
 console.log(chalk.blue(`Environment: [${projectEnv}] ${contextFile || chalk.red.bold('context file not defined')}`));
 context = existsSync(contextFile) ? JSON.parse(readFileSync(contextFile, 'utf8')) : {};
+console.log('context', JSON.stringify(context).substr(0, 100), '...');
 
 // Expose environment variables to render context
 context.env = process.env;
