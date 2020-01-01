@@ -3,7 +3,7 @@ const { readFileSync, readdirSync, unlinkSync, rmdirSync } = require('fs');
 var _ = require('lodash');
 
 const getConfig = require('../helpers/package').getConfig;
-const getMeta = require('../helpers/project').getMeta;
+const getMeta = require('./meta').getMeta;
 let meta = {};
 
 /**
@@ -62,14 +62,12 @@ function MetaExtension(cb) {
     let refMetaFileName = args instanceof Object && Object.keys(args).filter(e => e != '__keywords')[0];
     var metaFileName = args[refMetaFileName];
 
-    let config = getMeta(context.env, metaFileName, args.objectName, args.contentType || 'sql');
-    console.log('meta', JSON.stringify(config).substr(0, 100), '...');
-
-    // add package settings as namespace object key (overwrite with user settings if any)
-    meta[config.namespace] = _.merge(config.settings, meta[config.namespace]);
-
     var template = context.env.getTemplate(metaFileName);
-    context.ctx[refMetaFileName] = template.error ? undefined : JSON.parse(template.tmplStr);
+    context.ctx[refMetaFileName] = template.error
+      ? undefined
+      : args.objectName
+      ? JSON.parse(template.tmplStr)[args.objectName]
+      : JSON.parse(template.tmplStr);
 
     meta = _.merge(meta, context.ctx);
     cb && cb();
@@ -117,17 +115,50 @@ const init = (inputDir, gitRepo, nunjucksOptions) => {
     }
   });
 
-  env.addFilter('pickBy', function(object, filter) {
-    if (filter instanceof Array) {
-      return object.filter(item => {
+  env.addFilter('pickBy', function(object, filter, code) {
+    // console.log('typeof object', typeof object, '; object instanceof Array', object instanceof Array);
+    // console.log('typeof filter', typeof filter, '; filter instanceof Array', filter instanceof Array);
+    if (object instanceof Array && filter instanceof Array) {
+      let res = object.filter(item => {
+        return filter.includes(item[code || 'code']);
+      });
+      // order as in filter
+      return _.chain(res)
+        .orderBy(
+          o => {
+            return new Number(filter.indexOf(o[code]));
+          },
+          ['asc']
+        )
+        .value();
+
+      // return res;
+      // return object.filter(item => {
+      //   return filter.includes(item[code || 'code']);
+      // });
+    } else if (object instanceof Array && typeof filter === 'string') {
+      return object.find(item => {
+        return item[code || 'code'] === filter;
+      });
+    } else if (object instanceof Array && filter instanceof Object) {
+      return _.pickBy(object, function(value, key) {
         return filter.includes(item.code);
       });
-    }
-    // console.log('typeof filter', typeof filter);
-    else
-      return _.pickBy(object, function(value, key) {
-        return _.startsWith(key, filter);
-      });
+    } else return {};
+  });
+
+  env.addFilter('keyBy', function(object, code) {
+    // console.log('typeof object', typeof object, '; object instanceof Array', object instanceof Array);
+    // console.log('typeof filter', typeof filter, '; filter instanceof Array', filter instanceof Array);
+    return _.reduce(
+      object,
+      (hash, value) => {
+        let key = value[code || 'code'];
+        hash[key] = value;
+        return hash;
+      },
+      {}
+    );
   });
 
   env.addFilter('merge', function(object1, object2) {

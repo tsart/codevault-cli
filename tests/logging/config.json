@@ -3,7 +3,16 @@
   "dbType": "SQL Azure",
   "settings": {
     "schemaName": "log",
-    "logLevel": "info"
+    "defaultLogLevel": "info",
+    "logLevels": [
+      "trace",
+      "debug",
+      "info",
+      "warn",
+      "error",
+      "fatal"
+    ],
+    "dropTables": true
   },
   "dataTypes": {
     "integers": [

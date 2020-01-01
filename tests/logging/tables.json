@@ -2,13 +2,14 @@
   "records": {
     "type": "Table",
     "tableName": "records",
-    "createParameters": "WITH ( DISTRIBUTION = ROUND_ROBIN, HEAP )",
+    "createParameters": "",
     "columnsPK": [
       "id"
     ],
     "columns": [
       {
         "name": "logLevel",
+        "description": "[debug, info, warning, error]",
         "dataType": "varchar",
         "characterMaximumLength": 10,
         "isNullable": false,
@@ -16,6 +17,15 @@
       },
       {
         "name": "message",
+        "description": "log message",
+        "dataType": "varchar",
+        "characterMaximumLength": -1,
+        "isNullable": true,
+        "ordinalPosition": 2
+      },
+      {
+        "name": "detail",
+        "description": "message detail in JSON format",
         "dataType": "varchar",
         "characterMaximumLength": -1,
         "isNullable": true,
