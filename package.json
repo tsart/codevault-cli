@@ -1,6 +1,6 @@
 {
 	"name": "@codevault/codevault-cli",
-	"version": "0.0.1",
+	"version": "0.0.5",
 	"description": "CodeVault CLI",
 	"author": "Otrera",
 	"repository": "github:tsart/codevault-cli",
@@ -13,9 +13,6 @@
 	"bin": {
 		"codevault": "./index.js"
 	},
-	"files": [
-		"index.js"
-	],
 	"engines": {
 		"node": ">=8.0.0"
 	},

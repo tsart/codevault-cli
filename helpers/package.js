@@ -15,7 +15,7 @@ const getConfig = (env, packageName, objectName, type) => {
     main = env.getTemplate(`${packageName}/${mainTemplate}`);
 
     // let configFile = String(package.main).replace(parse(mainTemplate).ext, '.json');
-    item = 'config.json';
+    item = 'module.context.json';
     let config = JSON.parse(env.getTemplate(`${packageName}/${item}`).tmplStr);
     if (!config.namespace) throw `"namespace" attribute is not defined in [${item}]`;
 

@@ -14,14 +14,15 @@ const projectEnv = 'production' === process.env.NODE_ENV ? 'prod' : 'dev';
 const engineEnv = require('./helpers/engine');
 
 const { argv } = require('yargs')
-  .usage('Usage: codevault <file|glob> [context] [options]')
+  .usage('Usage: codevault <file|glob|command> [context] [options]')
+  .example('codevault i -p @codevault/sql-logging', 'Generate package install script')
   .example('codevault foo.tpl', 'Compile foo.tpl using default context file')
   .example('codevault *.tpl -w -p src -o out', 'Watch .tpl files in ./src, compile them to ./out')
-  .demandCommand(1, 'You must provide at least a file/glob path')
   .epilogue('For more information on template engine: https://mozilla.github.io/nunjucks/')
   .help()
   .alias('help', 'h')
   .locale('en')
+  .demandCommand()
   .version(false)
   .option('path', {
     alias: 'p',
@@ -59,24 +60,38 @@ const { argv } = require('yargs')
     describe: 'Options file'
   });
 
-const inputDir = resolve(process.cwd(), argv.path) || '';
-const outputDir = argv.out || '';
+const inputDir = argv.path === '.' ? resolve(process.cwd()) : dirname(require.resolve(argv.path));
 
-let contextFile =
-  argv._[1] || (projectEnv === 'dev' && 'local.context.json') || (projectEnv === 'prod' && 'context.json');
+// let packageName = (argv._[0] === ('install' || 'test' || 'doc' || undefined) && argv.path) || undefined;
+let packageName = (['install', 'test', 'doc', 'i', 't', 'd'].includes(argv._[0]) && argv.path) || undefined;
+let fileMask = ['install', 'i'].includes(argv._[0])
+  ? basename(require.resolve(argv.path))
+  : ['test', 't'].includes(argv._[0])
+  ? '*.test.*.template'
+  : ['doc', 'd'].includes(argv._[0])
+  ? '*.doc.*.template'
+  : argv._[0];
+console.warn('argv._[0]', argv._[0], 'argv.path', argv.path);
+console.warn('fileMask', fileMask, 'packageName', packageName);
+// let fileMask = argv._[0] || basename(require.resolve(argv.path))
+// let packageName = ((argv._[0] === undefined) && argv.path) || undefined
+// console.warn('fileMask',fileMask,'packageName',packageName)
+const outputDir = packageName ? `${argv.out}/${packageName}` : argv.out || '';
+console.warn('outputDir', outputDir);
+
+let contextFile = (projectEnv === 'dev' && 'local.context.json') || (projectEnv === 'prod' && 'context.json');
 console.log(chalk.blue(`Environment: [${projectEnv}] ${contextFile || chalk.red.bold('context file not defined')}`));
 context = existsSync(contextFile) ? JSON.parse(readFileSync(contextFile, 'utf8')) : {};
-console.log('context', JSON.stringify(context).substr(0, 100), '...');
 
 // Expose environment variables to render context
-context.env = process.env;
+context.env = context.env ? process.env : {};
 
 /** @type {nunjucks.ConfigureOptions} */
 const nunjucksOptions = argv.options
   ? JSON.parse(readFileSync(argv.options, 'utf8'))
-  : { trimBlocks: true, lstripBlocks: true, noCache: true, autoescape: true };
+  : { lstripBlocks: true, noCache: true, autoescape: true };
 
-const codeVaultEnv = engineEnv.init(inputDir, nunjucksOptions);
+const codeVaultEnv = engineEnv.init(inputDir, nunjucksOptions, packageName);
 
 const render = (/** @type {string[]} */ files) => {
   console.time('Execution time');
@@ -86,7 +101,8 @@ const render = (/** @type {string[]} */ files) => {
 
     try {
       const res = codeVaultEnv.render(file, context);
-      let outputFile = file.replace(/\.\w+$/, `.${argv.extension}`);
+      // let outputFile = file.replace(/\.\w+$/, `.${argv.extension}`)
+      let outputFile = file.replace('.template', '');
       console.log(chalk.white('Output: ' + outputFile));
 
       if (outputDir) {
@@ -107,7 +123,7 @@ const render = (/** @type {string[]} */ files) => {
 const globOptions = { strict: true, cwd: inputDir, ignore: '**/_*.*', nonull: true };
 
 // Render the files given a glob pattern (except the ones starting with "_")
-glob(argv._[0], globOptions, (err, files) => {
+glob(fileMask, globOptions, (err, files) => {
   if (err) return console.error(chalk.red(err));
   render(files);
 });
@@ -119,7 +135,8 @@ if (argv.watch) {
 
   /** @type {chokidar.WatchOptions} */
   const watchOptions = { persistent: true, cwd: inputDir };
-  const watcher = chokidar.watch(argv._[0], watchOptions);
+  const watcher = chokidar.watch(fileMask, watchOptions);
+  // const watcher = chokidar.watch(argv._[0], watchOptions);
 
   watcher.on('ready', () => console.log(chalk.gray('Watching templates...')));
 

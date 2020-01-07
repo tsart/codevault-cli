@@ -1,5 +1,6 @@
 var nunjucks = require('nunjucks');
-const { readFileSync, readdirSync, unlinkSync, rmdirSync } = require('fs');
+const { readFileSync, existsSync, readdirSync, unlinkSync, rmdirSync } = require('fs');
+const path = require('path');
 var _ = require('lodash');
 
 const getConfig = require('../helpers/package').getConfig;
@@ -7,20 +8,20 @@ const getMeta = require('./meta').getMeta;
 let meta = {};
 
 /**
- * Define custom tag "require" to load Node package data by name
- * @param {string} package NPM package name
+ * Define custom tag "fetch" to load Node package data by name
+ * @param {string} packageName NPM package name
  * @param {string} objectName (optional) object to load from NPM package
  * @param {string} contentType (optional) output format (if available)
  * @returns {string}
  */
 // Example 1:
-// {# get all objects from NPM package in default format #}
-// {% require package = "@codevault/sql-poc" %}
+// {# get core object from NPM package in default format #}
+// {{ fetch core = 'core.json', packageName = '@codevault/sql-logging' }}
 // Example 2:
-// {# get [info] object from NPM package in markdown format #}
-// {% require package = "@codevault/sql-poc", objectName = "info", contentType = "md" %}
-function ImportExtension(cb) {
-  this.tags = ['require'];
+// {# get [version] from package.json file in current folder #}
+// {% fetch package = "package.json", objectName = "version" %}
+function FetchExtension(packageName, cb) {
+  this.tags = ['fetch'];
 
   this.parse = function(parser, nodes, lexer) {
     var tok = parser.nextToken();
@@ -31,24 +32,27 @@ function ImportExtension(cb) {
   };
 
   this.run = function(context, args, cb) {
-    let refPackageName = args instanceof Object && Object.keys(args).filter(e => e != '__keywords')[0];
-    var packageName = args[refPackageName];
+    let refFileName = args instanceof Object && Object.keys(args).filter(e => e != '__keywords')[0];
+    let fileName = args[refFileName];
+    packageName = packageName || args.packageName || '';
+    let fullName = `${packageName}/${fileName}`;
 
-    let config = getConfig(context.env, packageName, args.objectName, args.contentType || 'sql');
+    if ((args.contentType || 'json') === 'template') {
+      let template = context.env.getTemplate(require.resolve(fullName));
+      let content = template.error ? undefined : template.tmplStr;
 
-    // add package settings as namespace object key (overwrite with user settings if any)
-    meta[config.namespace] = _.merge(config.settings, meta[config.namespace]);
+      context.ctx[refFileName] = context.env.filters.safe(context.env.renderString(content, context.ctx));
+    } else {
+      let data = JSON.parse(readFileSync(existsSync(fullName) ? fullName : require.resolve(fullName)));
+      context.ctx[refFileName] = args.objectName ? data[args.objectName] : data;
+    }
 
-    var template = context.env.getTemplate(`${packageName}/${config.template}`);
-    context.ctx[refPackageName] = template.error ? undefined : template.tmplStr;
-
-    meta = _.merge(meta, context.ctx);
     cb && cb();
   };
 }
 
-function MetaExtension(cb) {
-  this.tags = ['meta'];
+function ConnectExtension(cb) {
+  this.tags = ['connect'];
 
   this.parse = function(parser, nodes, lexer) {
     var tok = parser.nextToken();
@@ -58,55 +62,56 @@ function MetaExtension(cb) {
     return new nodes.CallExtensionAsync(this, 'run', args, cb);
   };
 
+  // {{ connect log = '@codevault/sql-logging', detail = true }}
+  // {{ connect log = '@codevault/sql-logging', objectType = 'current' }}
   this.run = function(context, args, cb) {
-    let refMetaFileName = args instanceof Object && Object.keys(args).filter(e => e != '__keywords')[0];
-    var metaFileName = args[refMetaFileName];
+    let refPackageName = args instanceof Object && Object.keys(args).filter(e => e != '__keywords')[0];
+    let packageName = args[refPackageName];
 
-    var template = context.env.getTemplate(metaFileName);
-    context.ctx[refMetaFileName] = template.error
-      ? undefined
-      : args.objectName
-      ? JSON.parse(template.tmplStr)[args.objectName]
-      : JSON.parse(template.tmplStr);
+    let fullName = (packageName ? `${packageName}/` : '') + 'module.context.json';
 
-    meta = _.merge(meta, context.ctx);
+    let data = JSON.parse(readFileSync(require.resolve(fullName)));
+
+    let def = data[data.namespace];
+    let current = context.ctx[data.namespace];
+    context.ctx[refPackageName] = (args.objectType || 'current') === 'current' ? _.merge(def, current) : { ...def };
+
+    if (args.extended) {
+      data.files.push('package.json');
+      data.files.map(file => {
+        let fileFullName = (packageName ? `${packageName}/` : '') + file;
+        let name = path.basename(file, path.extname(file));
+        context.ctx[refPackageName][name] = JSON.parse(readFileSync(require.resolve(fileFullName)));
+      });
+    }
+
     cb && cb();
   };
 }
 
 // Define environment with custom loader
-const init = (inputDir, gitRepo, nunjucksOptions) => {
+const init = (inputDir, nunjucksOptions, packageName) => {
   var env = new nunjucks.Environment(
-    [new nunjucks.FileSystemLoader(inputDir), new nunjucks.NodeResolveLoader()],
+    [
+      new nunjucks.FileSystemLoader(inputDir),
+      new nunjucks.NodeResolveLoader()
+      //    new nunjucks.FileSystemLoader(require.resolve('@codevault\/sql-logging')),
+    ],
     nunjucksOptions
   );
-  env.addExtension('ImportExtension', new ImportExtension());
-  env.addExtension('MetaExtension', new MetaExtension());
+
+  env.addExtension('FetchExtension', new FetchExtension(packageName));
+  env.addExtension('ConnectExtension', new ConnectExtension());
 
   // Usage: {{ datetimeValue | time }}
   env.addFilter('time', function(datetime) {
     return new Date(+datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   });
 
-  // Example 1: Render [code] value
-  // {{ code | renderString | safe }}
-  // Example 2: Render [code] value with defined context
-  // {{ code | renderString ({schemaName: source.schemaName, tableName: source.tableName}) | safe }}
   env.addFilter('renderString', function(text, context) {
-    return env.renderString(text, _.merge(meta, context));
+    return env.renderString(text, context);
   });
 
-  // Example of async filter (similar to `include`-tag)
-  // Usage: {{ 'template-name.njk' | render({a: 10, text: 'OK'}) }}
-  // env.addFilter('render', function(template, ctx, cb) {
-  //   // env.render(template, ctx);
-  //   env.render(template, ctx, (err, result) => {
-  //     // cb && cb(err, !err ? result : undefined);
-  //     cb && cb(err, !err ? env.filters.safe(html) : undefined);
-  //   });
-  // });
-
-  // {{ 'test2.html' | render({b: 200}) }}
   env.addFilter('render', function(template, ctx) {
     try {
       return env.filters.safe(env.render(template, ctx));
@@ -116,8 +121,6 @@ const init = (inputDir, gitRepo, nunjucksOptions) => {
   });
 
   env.addFilter('pickBy', function(object, filter, code) {
-    // console.log('typeof object', typeof object, '; object instanceof Array', object instanceof Array);
-    // console.log('typeof filter', typeof filter, '; filter instanceof Array', filter instanceof Array);
     if (object instanceof Array && filter instanceof Array) {
       let res = object.filter(item => {
         return filter.includes(item[code || 'code']);
@@ -131,11 +134,6 @@ const init = (inputDir, gitRepo, nunjucksOptions) => {
           ['asc']
         )
         .value();
-
-      // return res;
-      // return object.filter(item => {
-      //   return filter.includes(item[code || 'code']);
-      // });
     } else if (object instanceof Array && typeof filter === 'string') {
       return object.find(item => {
         return item[code || 'code'] === filter;
@@ -148,8 +146,6 @@ const init = (inputDir, gitRepo, nunjucksOptions) => {
   });
 
   env.addFilter('keyBy', function(object, code) {
-    // console.log('typeof object', typeof object, '; object instanceof Array', object instanceof Array);
-    // console.log('typeof filter', typeof filter, '; filter instanceof Array', filter instanceof Array);
     return _.reduce(
       object,
       (hash, value) => {
